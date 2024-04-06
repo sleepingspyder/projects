@@ -14,45 +14,45 @@
 # This project aims to address the limitation of genre to similar songs in
 #    a users song recommendation experience. Let's begin!
 
-################################### FINAL CODE #################################
+################################################ begin ####################################################
 
+# checks and changes our working directory
 getwd()
-setwd("C:\\Users\\takla\\Downloads\\Fundamentals of Data Mining\\Final Project Information")
+setwd("C:\\Users\\takla\\Downloads\\Fundamentals of Data Mining")
 
 # reading the data
-Spotify.df <- read.csv("C:\\Users\\takla\\Downloads\\Fundamentals of Data Mining\\Final Project Information\\Spotify Songs.csv")
-head(Spotify.df, 3) # boom it's there now
+Spotify.df <- read.csv("C:\\Users\\takla\\Downloads\\Fundamentals of Data Mining\\Spotify Songs.csv")
+head(Spotify.df, 3) # boom it's there now. Knew ahead of time that there was no missing values or errors in file.
 View(Spotify.df)
 
+# making sure have the right packages to run kmeans
 install.packages("factoextra")
-# in ‘C:\Users\takla\AppData\Local\Temp\RtmpEDA48c\downloaded_packages’
 library(factoextra)
 
 # prepping data for k-means, going to make 3 subsets to run the songs through
 colnames(Spotify.df)
 
 # creating the subsets on the Spotify data
-# danceability, energy, valence - DANCEABILITY
+# danceability, energy, valence - calling this feature list "DANCEABILITY"
 Spotify.df.subset1 <- Spotify.df[c("danceability_.", "energy_.", "valence_.")]
-# instramentalness, acousticness, bpm - SING ALONG
+# instramentalness, acousticness, bpm - calling this feature list "SING ALONG"
 Spotify.df.subset2 <- Spotify.df[c("speechiness_.", "acousticness_.", "bpm")]
-# energy, bpm, speechiness - HYPE
+# energy, bpm, speechiness - calling this feature list "HYPE"
 Spotify.df.subset3 <- Spotify.df[c("energy_.", "bpm", "speechiness_.")]
 
 # Compute k-means with k = 7
-set.seed(123)
+set.seed(123) # setting the seed
 km1.res <- kmeans(Spotify.df.subset1, centers = 7, nstart = 30)
-Spotify.df$Cluster1 <- km1.res$cluster
-
+Spotify.df$Cluster1 <- km1.res$cluster # adding it to the song dataframe
+# again with different features
 km2.res <- kmeans(Spotify.df.subset2, centers = 7, nstart = 30)
 Spotify.df$Cluster2 <- km2.res$cluster
-
+# last time with different features
 km3.res <- kmeans(Spotify.df.subset3, centers = 7, nstart = 30)
 Spotify.df$Cluster3 <- km3.res$cluster
 
-# visualizing the clusters
+#################################### visualizing the clusters #############################################
 library(ggplot2)
-
 # SUBSET 1
 # Create a dataframe combining original data with new cluster labels
 data_with_clusters_cluster_1 <- cbind(Spotify.df.subset1, Cluster = km1.res$cluster)
@@ -62,8 +62,7 @@ ggplot(data_with_clusters_cluster_1, aes(x = danceability_., y = energy_., color
   geom_point(aes(size = valence_.), alpha = 0.7) +  # Using size to represent valence
   scale_color_discrete(name = "Cluster") +
   labs(x = "Danceability", y = "Energy", size = "Valence", title = "Clustering of Spotify Songs for Danceability") +
-  theme(legend.position = "bottom",  # Moving legend to bottom
-    legend.key.size = unit(1.2, "lines"))
+  theme(legend.position = "bottom")  # Moving legend to bottom
 
 # SUBSET 2
 data_with_clusters_cluster_2 <- cbind(Spotify.df.subset2, Cluster = km2.res$cluster)
@@ -73,8 +72,7 @@ ggplot(data_with_clusters_cluster_2, aes(x = acousticness_., y = speechiness_., 
   geom_point(aes(size = bpm), alpha = 0.7) +  # Using size to represent bpm
   scale_color_discrete(name = "Cluster") +
   labs(x = "BPM", y = "Speechiness", size = "BPM", title = "Clustering of Spotify Songs for Sing Along") +
-  theme(legend.position = "bottom",  # Moving legend to bottom
-        legend.key.size = unit(1.2, "lines"))
+  theme(legend.position = "bottom")  # Moving legend to bottom
 
 # SUBSET 3
 data_with_clusters_cluster_3 <- cbind(Spotify.df.subset3, Cluster = km3.res$cluster)
@@ -85,7 +83,7 @@ ggplot(data_with_clusters_cluster_3, aes(x = energy_., y = bpm, color = as.facto
   scale_color_discrete(name = "Cluster") +
   labs(x = "Energy", y = "BPM", size = "Speechiness", title = "Clustering of Spotify Songs for Hype") +
   theme(legend.position = "bottom",  # Moving legend to bottom
-        legend.key.size = unit(1.2, "lines"))
+        legend.key.size = unit(1, "lines"))
 
 # all done with the clustering!
 View(Spotify.df) # this just shows the data set after the new categories have been added
