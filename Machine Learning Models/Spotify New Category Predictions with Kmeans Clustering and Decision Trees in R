@@ -1,0 +1,161 @@
+# Author of code: Ty Klayum
+
+# Code from: https://www.kaggle.com/datasets/arnavvvvv/spotify-music
+
+# This R code takes a Spotify file found on Kaggle, and creates a kmeans
+#    clustering algorithm to create three new columns for the song data.
+#    Following this, there is a decision tree designed to predict those new
+#    categories that the kmeans finds.
+
+# This could be deployed and used to help users find songs similar to their
+#    input song in a program, help users find similar songs that might not
+#    necessarily be in the same genre as their song, etc.
+
+# This project aims to address the limitation of genre to similar songs in
+#    a users song recommendation experience. Let's begin!
+
+################################### FINAL CODE #################################
+
+getwd()
+setwd("C:\\Users\\takla\\Downloads\\Fundamentals of Data Mining\\Final Project Information")
+
+# reading the data
+Spotify.df <- read.csv("C:\\Users\\takla\\Downloads\\Fundamentals of Data Mining\\Final Project Information\\Spotify Songs.csv")
+head(Spotify.df, 3) # boom it's there now
+View(Spotify.df)
+
+install.packages("factoextra")
+# in ‘C:\Users\takla\AppData\Local\Temp\RtmpEDA48c\downloaded_packages’
+library(factoextra)
+
+# prepping data for k-means, going to make 3 subsets to run the songs through
+colnames(Spotify.df)
+
+# creating the subsets on the Spotify data
+# danceability, energy, valence - DANCEABILITY
+Spotify.df.subset1 <- Spotify.df[c("danceability_.", "energy_.", "valence_.")]
+# instramentalness, acousticness, bpm - SING ALONG
+Spotify.df.subset2 <- Spotify.df[c("speechiness_.", "acousticness_.", "bpm")]
+# energy, bpm, speechiness - HYPE
+Spotify.df.subset3 <- Spotify.df[c("energy_.", "bpm", "speechiness_.")]
+
+# Compute k-means with k = 7
+set.seed(123)
+km1.res <- kmeans(Spotify.df.subset1, centers = 7, nstart = 30)
+Spotify.df$Cluster1 <- km1.res$cluster
+
+km2.res <- kmeans(Spotify.df.subset2, centers = 7, nstart = 30)
+Spotify.df$Cluster2 <- km2.res$cluster
+
+km3.res <- kmeans(Spotify.df.subset3, centers = 7, nstart = 30)
+Spotify.df$Cluster3 <- km3.res$cluster
+
+# visualizing the clusters
+library(ggplot2)
+
+# SUBSET 1
+# Create a dataframe combining original data with new cluster labels
+data_with_clusters_cluster_1 <- cbind(Spotify.df.subset1, Cluster = km1.res$cluster)
+
+# Plotting using ggplot2
+ggplot(data_with_clusters_cluster_1, aes(x = danceability_., y = energy_., color = as.factor(Cluster))) +
+  geom_point(aes(size = valence_.), alpha = 0.7) +  # Using size to represent valence
+  scale_color_discrete(name = "Cluster") +
+  labs(x = "Danceability", y = "Energy", size = "Valence", title = "Clustering of Spotify Songs for Danceability") +
+  theme(legend.position = "bottom",  # Moving legend to bottom
+    legend.key.size = unit(1.2, "lines"))
+
+# SUBSET 2
+data_with_clusters_cluster_2 <- cbind(Spotify.df.subset2, Cluster = km2.res$cluster)
+
+# Plotting using ggplot2 with the second subset
+ggplot(data_with_clusters_cluster_2, aes(x = acousticness_., y = speechiness_., color = as.factor(Cluster))) +
+  geom_point(aes(size = bpm), alpha = 0.7) +  # Using size to represent bpm
+  scale_color_discrete(name = "Cluster") +
+  labs(x = "BPM", y = "Speechiness", size = "BPM", title = "Clustering of Spotify Songs for Sing Along") +
+  theme(legend.position = "bottom",  # Moving legend to bottom
+        legend.key.size = unit(1.2, "lines"))
+
+# SUBSET 3
+data_with_clusters_cluster_3 <- cbind(Spotify.df.subset3, Cluster = km3.res$cluster)
+
+# Plotting using ggplot2 with the third subset
+ggplot(data_with_clusters_cluster_3, aes(x = energy_., y = bpm, color = as.factor(Cluster))) +
+  geom_point(aes(size = speechiness_.), alpha = 0.7) +  # Using size to represent speechiness
+  scale_color_discrete(name = "Cluster") +
+  labs(x = "Energy", y = "BPM", size = "Speechiness", title = "Clustering of Spotify Songs for Hype") +
+  theme(legend.position = "bottom",  # Moving legend to bottom
+        legend.key.size = unit(1.2, "lines"))
+
+# all done with the clustering!
+View(Spotify.df) # this just shows the data set after the new categories have been added
+
+# time for decision trees? yes.
+
+################################ DECISION TREES ################################
+# imports
+library(caret)
+library(rpart)
+library(rpart.plot)
+set.seed(123)  # set seed for reproducing the partition
+
+########################## CLUSTER 1 w/ accuracy ###############################
+# create that training set (60% of data) and holdout set (40% of data)
+idx_set_1 <- createDataPartition(Spotify.df$Cluster1, p=0.6, list=FALSE)
+training.df_1 <- Spotify.df[idx_set_1, ]
+validation.df_1 <- Spotify.df[-idx_set_1, ]
+# Specify the features you want to include in your model
+selected_features_cluster_1 <- c("danceability_.", "energy_.", "valence_.")
+formula_1 <- as.formula(paste("Cluster1 ~", paste(selected_features_cluster_1, collapse = " + ")))
+# create the tree
+default.ct_1 <- rpart(formula_1, data = training.df_1, method = "class", minbucket = 25, maxdepth = 20)
+# plot the tree
+prp(default.ct_1, type = 1, extra = 1, under = TRUE, split.font = 1, varlen = -10)
+# finding the accuracy of the model
+predicted_labels_cluster_1 <- predict(default.ct_1, validation.df_1, type = "class")
+actual_labels_cluster_1 <- validation.df_1$Cluster1
+accuracy_1 <- mean(predicted_labels_cluster_1 == actual_labels_cluster_1)
+cat("Accuracy of the Danceability (cluster 1) decision tree model:", accuracy_1, "\n")
+
+########################## CLUSTER 2 w/ accuracy ###############################
+# creates the training and validation for the second cluster
+idx_set_2 <- createDataPartition(Spotify.df$Cluster2, p=0.6, list=FALSE)
+training.df_2 <- Spotify.df[idx_set_2, ]
+validation.df_2 <- Spotify.df[-idx_set_2, ]
+# specifies features to include in  model
+selected_features_cluster_2 <- c("speechiness_.", "acousticness_.", "bpm")
+formula_2 <- as.formula(paste("Cluster2 ~", paste(selected_features_cluster_2, collapse = " + ")))
+# create the tree
+default.ct_2 <- rpart(formula_2, data = training.df_2, method = "class", minbucket = 25, maxdepth = 20)
+# plot the tree
+prp(default.ct_2, type = 1, extra = 1, under = TRUE, split.font = 1, varlen = -10)
+# finding the accuracy of the model
+predicted_labels_cluster_2 <- predict(default.ct_2, validation.df_2, type = "class")
+actual_labels_cluster_2 <- validation.df_2$Cluster2
+accuracy_2 <- mean(predicted_labels_cluster_2 == actual_labels_cluster_2)
+cat("Accuracy of the Sing Along (cluster 2) decision tree model:", accuracy_2, "\n")
+
+########################## CLUSTER 3 w/ accuracy ###############################
+# creates the training and validation for the third cluster
+idx_set_3 <- createDataPartition(Spotify.df$Cluster3, p=0.6, list=FALSE)
+training.df_3 <- Spotify.df[idx_set_3, ]
+validation.df_3 <- Spotify.df[-idx_set_3, ]
+# specifies features to include in  model
+selected_features_cluster_3 <- c("speechiness_.", "acousticness_.", "bpm")
+formula_3 <- as.formula(paste("Cluster3 ~", paste(selected_features_cluster_3, collapse = " + ")))
+# create the tree
+default.ct_3 <- rpart(formula_3, data = training.df_3, method = "class", minbucket = 25, maxdepth = 20)
+# plot the tree
+prp(default.ct_3, type = 1, extra = 1, under = TRUE, split.font = 1, varlen = -10)
+# finding the accuracy of the model
+predicted_labels_cluster_3 <- predict(default.ct_3, validation.df_3, type = "class")
+actual_labels_cluster_3 <- validation.df_3$Cluster3
+accuracy_3 <- mean(predicted_labels_cluster_3 == actual_labels_cluster_3)
+cat("Accuracy of the Hype (cluster 3) decision tree model:", accuracy_3, "\n")
+
+# ACCURACIES
+# Danceability Model = ~81%
+# Sing Along Model   = ~94%
+# Hype Model         = ~74%
+
+# all done!
